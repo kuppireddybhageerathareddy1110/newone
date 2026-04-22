@@ -1,0 +1,21 @@
+[
+  "age",
+  "oldpeak",
+  "restingbp_final",
+  "chol_final",
+  "maxhr_final",
+  "sex_M",
+  "cp_final_ATA",
+  "cp_final_NAP",
+  "cp_final_TA",
+  "fbs_final_Yes",
+  "restecg_final_Normal",
+  "restecg_final_ST",
+  "exang_final_Y",
+  "slope_final_Flat",
+  "slope_final_Up",
+  "chol_age_ratio",
+  "bp_hr_ratio",
+  "stress_index",
+  "cardiac_load"
+]

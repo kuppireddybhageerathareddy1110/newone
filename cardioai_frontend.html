@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>CardioAI — Hybrid Heart Disease Prediction</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🫀</text></svg>"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+:root{
+  --sw:240px;--ink:#0f172a;--ink-mid:#334155;--ink-soft:#64748b;--ink-pale:#94a3b8;
+  --sur:#fff;--sur2:#f8fafc;--sur3:#f1f5f9;--bdr:#e2e8f0;
+  --acc:#e11d48;--acc2:#0ea5e9;--grn:#10b981;--amb:#f59e0b;--red:#ef4444;
+  --sb:#0f172a;--st:#94a3b8;--sh:rgba(255,255,255,.06);--sa:rgba(225,29,72,.15);--sat:#fda4af;
+  --serif:'DM Serif Display',Georgia,serif;--sans:'DM Sans',system-ui,sans-serif;
+  --r:10px;--card-sh:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.06);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--sur2);color:var(--ink);display:flex;min-height:100vh;font-size:15px;line-height:1.65}
+
+/* ── Loading ── */
+.ov{position:fixed;inset:0;background:rgba(15,23,42,.78);backdrop-filter:blur(6px);
+    display:none;flex-direction:column;align-items:center;justify-content:center;gap:1.2rem;z-index:9999}
+.ov.on{display:flex}
+.pulse{position:relative;width:78px;height:78px}
+.ring{position:absolute;inset:0;border:3px solid var(--acc);border-radius:50%;animation:pr 1.4s ease-out infinite}
+.hbi{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+     font-size:1.8rem;color:var(--acc);animation:hb .7s ease-in-out infinite alternate}
+@keyframes pr{0%{transform:scale(.8);opacity:1}100%{transform:scale(1.6);opacity:0}}
+@keyframes hb{to{transform:scale(1.15)}}
+.ov p{color:#e2e8f0;font-size:1rem}
+
+/* ── Sidebar ── */
+.sb{width:var(--sw);min-height:100vh;background:var(--sb);display:flex;flex-direction:column;
+    position:fixed;top:0;left:0;bottom:0;z-index:100;padding-bottom:1.5rem}
+.brand{display:flex;align-items:center;gap:.75rem;padding:1.5rem 1.25rem 1.75rem;
+       border-bottom:1px solid rgba(255,255,255,.07)}
+.brand-icon{font-size:1.6rem}
+.brand-name{font-family:var(--serif);font-size:1.3rem;color:#fff}
+.model-badge{font-size:.68rem;background:rgba(225,29,72,.2);color:#fda4af;padding:.2rem .55rem;
+             border-radius:99px;margin-left:.4rem;font-weight:600;letter-spacing:.04em}
+.sidenav{flex:1;display:flex;flex-direction:column;gap:2px;padding:1rem .75rem 0}
+.nav-item{display:flex;align-items:center;gap:.75rem;padding:.65rem 1rem;border:none;
+          background:transparent;color:var(--st);font-family:var(--sans);font-size:.9rem;
+          font-weight:500;border-radius:6px;cursor:pointer;transition:.15s;text-align:left;width:100%}
+.nav-item i{width:18px;text-align:center;font-size:.95rem}
+.nav-item:hover{background:var(--sh);color:#e2e8f0}
+.nav-item.active{background:var(--sa);color:var(--sat)}
+.sb-footer{padding:1rem 1.25rem 0;font-size:.78rem;color:var(--ink-pale);opacity:.7;
+           border-top:1px solid rgba(255,255,255,.07);margin:0 .75rem;padding-top:1rem}
+.sb-footer .warn{color:var(--amb);margin-top:.25rem}
+
+/* ── Main ── */
+.main{margin-left:var(--sw);flex:1;padding:2.5rem 2rem 4rem;max-width:calc(1280px + var(--sw))}
+.sec{display:none;animation:fu .3s ease}
+.sec.active{display:block}
+@keyframes fu{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Page header ── */
+.ph{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2rem;flex-wrap:wrap;gap:1rem}
+.ph h1{font-family:var(--serif);font-size:2rem;color:var(--ink);line-height:1.2;margin-bottom:.3rem}
+.ph p{color:var(--ink-soft);font-size:.95rem}
+.sample-btn{padding:.55rem 1.1rem;background:var(--sur);border:1.5px solid var(--bdr);
+            border-radius:var(--r);font-family:var(--sans);font-size:.875rem;font-weight:500;
+            color:var(--ink-mid);cursor:pointer;display:flex;align-items:center;gap:.5rem;
+            transition:.15s;white-space:nowrap}
+.sample-btn:hover{border-color:var(--acc);box-shadow:0 0 0 3px rgba(225,29,72,.08)}
+
+/* ── Hybrid info bar ── */
+.hybrid-bar{display:flex;gap:.75rem;margin-bottom:1.5rem;flex-wrap:wrap}
+.hchip{display:flex;align-items:center;gap:.5rem;padding:.45rem 1rem;border-radius:99px;
+       font-size:.82rem;font-weight:600;border:1.5px solid}
+.hchip.xgb{background:#fef3c7;border-color:#fcd34d;color:#92400e}
+.hchip.dl{background:#ede9fe;border-color:#c4b5fd;color:#5b21b6}
+.hchip.meta{background:#ecfdf5;border-color:#6ee7b7;color:#065f46}
+.hchip i{font-size:.85rem}
+
+/* ── Cards ── */
+.card{background:var(--sur);border:1px solid var(--bdr);border-radius:16px;box-shadow:var(--card-sh)}
+.ct{font-weight:600;font-size:1rem;color:var(--ink);display:flex;align-items:center;gap:.5rem;
+    padding:1.25rem 1.5rem;border-bottom:1px solid var(--bdr)}
+.ct i{color:var(--acc)}
+
+/* ── Assess grid ── */
+.ag{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;align-items:start}
+
+/* ── Form ── */
+form{padding:1.25rem 1.5rem}
+.fgl{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;
+     color:var(--ink-pale);margin:1.25rem 0 .75rem}
+.fgl:first-child{margin-top:0}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:.875rem;margin-bottom:.875rem}
+.fr.three{grid-template-columns:1fr 1fr 1fr}
+.field{display:flex;flex-direction:column;gap:.3rem}
+.field label{font-size:.8rem;font-weight:600;color:var(--ink-mid);display:flex;align-items:center;gap:.35rem}
+.field label .unit{font-weight:400;color:var(--ink-pale);font-size:.75rem}
+.field input,.field select{padding:.52rem .75rem;border:1.5px solid var(--bdr);border-radius:6px;
+  font-family:var(--sans);font-size:.9rem;color:var(--ink);background:var(--sur);transition:.15s}
+.field input:focus,.field select:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 3px rgba(225,29,72,.1)}
+.pb{width:100%;margin-top:1.5rem;padding:.8rem 1.25rem;background:var(--acc);color:#fff;
+    border:none;border-radius:var(--r);font-family:var(--sans);font-size:1rem;font-weight:600;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.6rem;transition:.15s}
+.pb:hover{background:#be123c;transform:translateY(-1px);box-shadow:0 6px 20px rgba(225,29,72,.3)}
+
+/* ── Results ── */
+.rc{min-height:520px}
+.placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;
+             min-height:400px;padding:2rem;color:var(--ink-pale);text-align:center;gap:1rem}
+.placeholder-icon{font-size:3.5rem;filter:grayscale(1) opacity(.4)}
+#predResults{padding:1.5rem}
+.vb{border-radius:var(--r);padding:1.5rem;text-align:center;margin-bottom:1.5rem}
+.vb.low{background:#ecfdf5;border:1.5px solid #6ee7b7}
+.vb.medium{background:#fffbeb;border:1.5px solid #fcd34d}
+.vb.high{background:#fff1f2;border:1.5px solid #fda4af}
+.ve{font-size:2.5rem;margin-bottom:.5rem}
+.vl{font-family:var(--serif);font-size:1.6rem;color:var(--ink);margin-bottom:.2rem}
+.vs{color:var(--ink-soft);font-size:.9rem}
+
+/* Model contribution row */
+.contrib-row{display:flex;gap:.5rem;margin-bottom:1.25rem;flex-wrap:wrap;justify-content:center}
+.contrib-chip{font-size:.78rem;padding:.3rem .75rem;border-radius:99px;font-weight:600;border:1px solid}
+.contrib-chip.xgb{background:#fef3c7;border-color:#fcd34d;color:#92400e}
+.contrib-chip.dl{background:#ede9fe;border-color:#c4b5fd;color:#5b21b6}
+.contrib-chip.meta{background:#ecfdf5;border-color:#6ee7b7;color:#065f46}
+
+.prob-sec{text-align:center;margin-bottom:1.5rem}
+.arc-svg{width:200px;height:130px}
+.arc-pct{font-family:var(--serif);font-size:28px;fill:var(--ink)}
+.arc-label{font-size:11px;fill:var(--ink-pale)}
+.ci-pill{display:inline-flex;align-items:center;gap:.5rem;background:var(--sur3);border:1px solid var(--bdr);
+         border-radius:999px;padding:.3rem .9rem;font-size:.82rem;color:var(--ink-mid);margin-top:.75rem}
+.ci-pill i{color:var(--acc2)}
+.fcols{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem}
+.fcol{border-radius:var(--r);padding:1rem}
+.risk-col{background:#fff1f2;border-left:3px solid var(--red)}
+.prot-col{background:#ecfdf5;border-left:3px solid var(--grn)}
+.fch{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;
+     margin-bottom:.6rem;display:flex;align-items:center;gap:.4rem}
+.risk-col .fch{color:#be123c}.prot-col .fch{color:#059669}
+.fcol ul{list-style:none}
+.fcol li{font-size:.83rem;color:var(--ink-mid);padding:.25rem 0;border-bottom:1px solid rgba(0,0,0,.06);
+         display:flex;align-items:flex-start;gap:.4rem}
+.fcol li::before{content:'·';font-size:1.2rem;line-height:1;flex-shrink:0}
+.risk-col li::before{color:var(--red)}.prot-col li::before{color:var(--grn)}
+.fcol li:last-child{border-bottom:none}
+.cta-row{display:flex;gap:.75rem}
+.cta{flex:1;padding:.65rem 1rem;border-radius:var(--r);font-family:var(--sans);
+     font-size:.875rem;font-weight:600;cursor:pointer;display:flex;align-items:center;
+     justify-content:center;gap:.45rem;transition:.15s}
+.cta.primary{background:var(--acc);color:#fff;border:none}
+.cta.primary:hover{background:#be123c}
+.cta.ghost{background:var(--sur);color:var(--ink-mid);border:1.5px solid var(--bdr)}
+.cta.ghost:hover{border-color:var(--ink-pale);background:var(--sur3)}
+
+/* ── Tabs ── */
+.tab-bar{display:flex;gap:4px;margin-bottom:1.5rem;border-bottom:2px solid var(--bdr);flex-wrap:wrap}
+.tab{background:none;border:none;padding:.65rem 1.1rem .8rem;font-family:var(--sans);
+     font-size:.875rem;font-weight:500;color:var(--ink-soft);cursor:pointer;
+     border-bottom:2px solid transparent;margin-bottom:-2px;display:flex;align-items:center;gap:.45rem;transition:.15s}
+.tab:hover{color:var(--ink)}.tab.active{color:var(--acc);border-bottom-color:var(--acc)}
+.tp{display:none}.tp.active{display:block}
+
+/* ── Plot cards ── */
+.pc{overflow:hidden}.pw{padding:1.5rem;min-height:380px;position:relative}
+.card-sub{font-size:.875rem;color:var(--ink-soft);padding:.75rem 1.5rem 0}
+.plot-img{width:100%;border-radius:6px;display:none}.plot-img.loaded{display:block}
+.pph{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.75rem;color:var(--ink-pale)}
+.pph i{font-size:2.5rem}
+.force-frame{width:100%;height:380px;border:1px solid var(--bdr);border-radius:6px}
+.load-btn{padding:.6rem 1.5rem;background:var(--sur);border:1.5px solid var(--bdr);border-radius:var(--r);
+          font-family:var(--sans);font-size:.9rem;font-weight:600;color:var(--ink-mid);cursor:pointer;
+          display:flex;align-items:center;gap:.5rem;transition:.15s}
+.load-btn:hover{border-color:var(--acc);box-shadow:0 0 0 3px rgba(225,29,72,.08)}
+
+/* ── LIME table ── */
+.lime-table{width:100%;border-collapse:collapse;font-size:.85rem;margin-top:1rem}
+.lime-table th{background:var(--sur3);padding:.65rem .75rem;text-align:left;font-weight:600;
+               color:var(--ink-mid);border-bottom:2px solid var(--bdr)}
+.lime-table td{padding:.55rem .75rem;border-bottom:1px solid var(--bdr);color:var(--ink-mid)}
+.lime-table tr:last-child td{border-bottom:none}
+
+/* ── Insights ── */
+.ig{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1.25rem}
+.ins{background:var(--sur);border:1px solid var(--bdr);border-radius:16px;padding:1.75rem 1.5rem;
+     box-shadow:var(--card-sh);transition:.2s}
+.ins:hover{transform:translateY(-3px);box-shadow:0 4px 24px rgba(0,0,0,.1)}
+.ins-icon{font-size:2rem;display:block;margin-bottom:.75rem}
+.ins h3{font-weight:700;font-size:1rem;margin-bottom:.5rem;color:var(--ink)}
+.ins p{color:var(--ink-soft);font-size:.875rem}
+
+/* ── About ── */
+.abg{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.25rem}
+.abc dl{padding:1.25rem 1.5rem}
+.abc dt{font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
+        color:var(--ink-pale);margin-top:1rem}
+.abc dt:first-child{margin-top:0}.abc dd{font-size:.9rem;color:var(--ink);margin-left:0}
+.abc p{padding:1.25rem 1.5rem;font-size:.9rem;color:var(--ink-mid)}
+.warn-card{border-left:4px solid var(--amb)}
+.warn-card .ct{color:var(--amb)}.warn-card .ct i{color:var(--amb)}
+.hybrid-card{border-left:4px solid var(--grn)}
+.hybrid-card .ct{color:#059669}.hybrid-card .ct i{color:#059669}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:2rem;right:2rem;background:#0f172a;color:#e2e8f0;
+       padding:.75rem 1.25rem;border-radius:8px;display:flex;align-items:center;gap:.5rem;
+       font-size:.875rem;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.25);
+       transform:translateY(20px);opacity:0;transition:.3s;z-index:9998}
+.toast i{color:var(--grn)}.toast.show{transform:translateY(0);opacity:1}
+
+/* ── Responsive ── */
+@media(max-width:1080px){.ag{grid-template-columns:1fr}}
+@media(max-width:700px){
+  .sb{display:none}.main{margin-left:0;padding:1.5rem 1rem 3rem}
+  .ag,.fr,.fcols,.cta-row{grid-template-columns:1fr}
+  .fr.three{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="ov" class="ov">
+  <div class="pulse"><div class="ring"></div><i class="fas fa-heartbeat hbi"></i></div>
+  <p id="ovMsg">Analysing patient data…</p>
+</div>
+
+<!-- Sidebar -->
+<aside class="sb">
+  <div class="brand">
+    <span class="brand-icon">🫀</span>
+    <span class="brand-name">CardioAI<span class="model-badge">HYBRID</span></span>
+  </div>
+  <nav class="sidenav">
+    <button class="nav-item active" data-sec="predict"><i class="fas fa-stethoscope"></i><span>Assessment</span></button>
+    <button class="nav-item" data-sec="explain"><i class="fas fa-microscope"></i><span>XAI Explanations</span></button>
+    <button class="nav-item" data-sec="insights"><i class="fas fa-notes-medical"></i><span>Clinical Insights</span></button>
+    <button class="nav-item" data-sec="about"><i class="fas fa-flask"></i><span>Model Details</span></button>
+  </nav>
+  <div class="sb-footer">
+    <p>Stacked Hybrid · XGB+DL+Meta-LR</p>
+    <p class="warn">Research use only</p>
+  </div>
+</aside>
+
+<!-- Main -->
+<main class="main">
+
+<!-- ── ASSESSMENT ── -->
+<section id="predictSection" class="sec active">
+  <div class="ph">
+    <div>
+      <h1>Patient Risk Assessment</h1>
+      <p>Hybrid model: XGBoost + Deep Learning stacked via Meta Logistic Regression.</p>
+    </div>
+    <button class="sample-btn" onclick="loadSample()"><i class="fas fa-user-injured"></i> Load Sample</button>
+  </div>
+
+  <div class="hybrid-bar">
+    <div class="hchip xgb"><i class="fas fa-tree"></i> XGBoost (base)</div>
+    <div class="hchip dl"><i class="fas fa-brain"></i> Deep Learning (base)</div>
+    <div class="hchip meta"><i class="fas fa-layer-group"></i> Meta Logistic Regression (stacked)</div>
+  </div>
+
+  <div class="ag">
+    <div class="card">
+      <div class="ct"><i class="fas fa-clipboard-list"></i> Patient Parameters</div>
+      <form id="pForm">
+        <div class="fgl">Demographics</div>
+        <div class="fr">
+          <div class="field"><label>Age <span class="unit">yrs</span></label><input type="number" id="age" min="18" max="120" value="55" required/></div>
+          <div class="field"><label>Biological Sex</label><select id="sex"><option value="Male">Male</option><option value="Female">Female</option></select></div>
+        </div>
+        <div class="fgl">Cardiac Markers</div>
+        <div class="fr">
+          <div class="field"><label>Chest Pain Type</label>
+            <select id="chest_pain">
+              <option value="Typical Angina">Typical Angina</option>
+              <option value="Atypical Angina" selected>Atypical Angina</option>
+              <option value="Non-anginal Pain">Non-anginal Pain</option>
+              <option value="Asymptomatic">Asymptomatic</option>
+            </select>
+          </div>
+          <div class="field"><label>Resting ECG</label>
+            <select id="resting_ecg">
+              <option value="Normal">Normal</option>
+              <option value="ST-T Abnormality">ST-T Abnormality</option>
+              <option value="LV Hypertrophy">LV Hypertrophy</option>
+            </select>
+          </div>
+        </div>
+        <div class="fr">
+          <div class="field"><label>Exercise Angina</label><select id="exercise_angina"><option value="No">No</option><option value="Yes">Yes</option></select></div>
+          <div class="field"><label>ST Slope</label>
+            <select id="st_slope">
+              <option value="Upsloping">Upsloping</option>
+              <option value="Flat" selected>Flat</option>
+              <option value="Downsloping">Downsloping</option>
+            </select>
+          </div>
+        </div>
+        <div class="fgl">Vitals &amp; Labs</div>
+        <div class="fr three">
+          <div class="field"><label>Resting BP <span class="unit">mm Hg</span></label><input type="number" id="restingbp_final" min="80" max="200" value="140" required/></div>
+          <div class="field"><label>Cholesterol <span class="unit">mg/dl</span></label><input type="number" id="chol_final" min="100" max="600" value="250" required/></div>
+          <div class="field"><label>Max Heart Rate <span class="unit">bpm</span></label><input type="number" id="maxhr_final" min="60" max="220" value="150" required/></div>
+        </div>
+        <div class="fr">
+          <div class="field"><label>ST Depression <span class="unit">Oldpeak</span></label><input type="number" id="oldpeak" min="0" max="10" step="0.1" value="2.0" required/></div>
+          <div class="field"><label>Fasting Blood Sugar <span class="unit">&gt;120 mg/dl</span></label><select id="fasting_bs"><option value="No">No</option><option value="Yes">Yes</option></select></div>
+        </div>
+        <button type="submit" class="pb"><i class="fas fa-brain"></i> Run Hybrid Analysis</button>
+      </form>
+    </div>
+
+    <div class="card rc" id="resCard">
+      <div class="ct"><i class="fas fa-chart-pie"></i> Hybrid Prediction Results</div>
+      <div id="resPlaceholder" class="placeholder">
+        <div class="placeholder-icon">🫀</div>
+        <p>Complete the form and click<br/><strong>Run Hybrid Analysis</strong> to see results.</p>
+      </div>
+      <div id="predResults" style="display:none">
+        <div id="vbadge" class="vb"></div>
+        <!-- Model contribution -->
+        <div class="contrib-row">
+          <div class="contrib-chip xgb"><i class="fas fa-tree"></i> XGB: <strong id="xgbP">—</strong></div>
+          <div class="contrib-chip dl"><i class="fas fa-brain"></i> DL: <strong id="dlP">—</strong></div>
+          <div class="contrib-chip meta"><i class="fas fa-layer-group"></i> Hybrid: <strong id="hybP">—</strong></div>
+        </div>
+        <div class="prob-sec">
+          <svg class="arc-svg" viewBox="0 0 200 120">
+            <path d="M 20 100 A 80 80 0 0 1 180 100" stroke="#e2e8f0" stroke-width="16" fill="none" stroke-linecap="round"/>
+            <path id="arcFill" d="M 20 100 A 80 80 0 0 1 180 100" stroke="#ef4444" stroke-width="16" fill="none"
+              stroke-linecap="round" stroke-dasharray="251.2" stroke-dashoffset="251.2"
+              style="transition:stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1),stroke .8s"/>
+            <text x="100" y="92" text-anchor="middle" class="arc-pct" id="arcPct">0%</text>
+            <text x="100" y="112" text-anchor="middle" class="arc-label">Hybrid Probability</text>
+          </svg>
+          <div class="ci-pill"><i class="fas fa-bullseye"></i><span>95% CI: <strong id="ciTxt">—</strong></span></div>
+        </div>
+        <div class="fcols">
+          <div class="fcol risk-col"><div class="fch"><i class="fas fa-triangle-exclamation"></i> Risk Factors</div><ul id="riskList"></ul></div>
+          <div class="fcol prot-col"><div class="fch"><i class="fas fa-shield-heart"></i> Protective</div><ul id="protList"></ul></div>
+        </div>
+        <div class="cta-row">
+          <button class="cta primary" onclick="goExplain()"><i class="fas fa-microscope"></i> View XAI Explanations</button>
+          <button class="cta ghost" onclick="exportCSV()"><i class="fas fa-file-arrow-down"></i> Export CSV</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── XAI EXPLANATIONS ── -->
+<section id="explainSection" class="sec">
+  <div class="ph"><div><h1>XAI Explanations</h1><p>SHAP (XGBoost TreeExplainer) &amp; LIME — individual and global interpretability.</p></div></div>
+  <div class="tab-bar">
+    <button class="tab active" data-tab="waterfall"><i class="fas fa-water"></i> Waterfall</button>
+    <button class="tab" data-tab="force"><i class="fas fa-arrows-left-right"></i> Force Plot</button>
+    <button class="tab" data-tab="lime"><i class="fas fa-lemon"></i> LIME</button>
+    <button class="tab" data-tab="summary"><i class="fas fa-chart-bar"></i> Global Summary</button>
+    <button class="tab" data-tab="importance"><i class="fas fa-list-ol"></i> Importance</button>
+  </div>
+
+  <div id="waterfallTab" class="tp active">
+    <div class="card pc">
+      <div class="ct">SHAP Waterfall — Individual Prediction</div>
+      <p class="card-sub">Each bar shows how a feature pushes the prediction above (red) or below (blue) the baseline.</p>
+      <div class="pw"><img id="wfImg" class="plot-img" alt="waterfall"/><div id="wfPh" class="pph"><i class="fas fa-image"></i><p>Run a prediction first</p></div></div>
+    </div>
+  </div>
+
+  <div id="forceTab" class="tp">
+    <div class="card pc">
+      <div class="ct">SHAP Force Plot</div>
+      <p class="card-sub">Cumulative feature impact — red pushes toward disease, blue away from it.</p>
+      <div class="pw"><iframe id="forceFrame" class="force-frame"></iframe><div id="forcePh" class="pph"><i class="fas fa-image"></i><p>Run a prediction first</p></div></div>
+    </div>
+  </div>
+
+  <div id="limeTab" class="tp">
+    <div class="card pc">
+      <div class="ct">LIME — Local Interpretable Explanation</div>
+      <p class="card-sub">A simple surrogate model fitted locally around this single prediction.</p>
+      <div class="pw"><img id="limeImg" class="plot-img" alt="lime"/><div id="limePh" class="pph"><i class="fas fa-lemon"></i><p>Run a prediction first</p></div></div>
+      <div id="limeTableWrap" style="display:none;padding:0 1.5rem 1.5rem">
+        <table id="limeTable" class="lime-table"></table>
+      </div>
+    </div>
+  </div>
+
+  <div id="summaryTab" class="tp">
+    <div class="card pc">
+      <div class="ct">Global SHAP Summary (Beeswarm)</div>
+      <p class="card-sub">Feature importance distribution across a synthetic representative sample.</p>
+      <div class="pw"><img id="sumImg" class="plot-img" alt="summary"/><div id="sumPh" class="pph"><button class="load-btn" onclick="loadSummary()"><i class="fas fa-sync"></i> Load Plot</button></div></div>
+    </div>
+  </div>
+
+  <div id="importanceTab" class="tp">
+    <div class="card pc">
+      <div class="ct">Feature Importance — Mean |SHAP|</div>
+      <p class="card-sub">Global ranking: which features matter most across all predictions.</p>
+      <div class="pw"><img id="impImg" class="plot-img" alt="importance"/><div id="impPh" class="pph"><button class="load-btn" onclick="loadImportance()"><i class="fas fa-sync"></i> Load Plot</button></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CLINICAL INSIGHTS ── -->
+<section id="insightsSection" class="sec">
+  <div class="ph"><div><h1>Clinical Insights</h1><p>Evidence-based guidance for cardiovascular risk reduction.</p></div></div>
+  <div class="ig">
+    <div class="ins"><span class="ins-icon">🏃</span><h3>Physical Activity</h3><p>150 min/week of moderate aerobic activity reduces cardiovascular event risk by 35%.</p></div>
+    <div class="ins"><span class="ins-icon">🥗</span><h3>Diet</h3><p>Mediterranean diet with omega-3 rich foods lowers LDL and systemic inflammation.</p></div>
+    <div class="ins"><span class="ins-icon">🩺</span><h3>Blood Pressure</h3><p>Maintaining systolic BP below 130 mm Hg halves the risk of major cardiac events.</p></div>
+    <div class="ins"><span class="ins-icon">🧘</span><h3>Stress Management</h3><p>Chronic stress elevates cortisol and promotes arterial plaque formation.</p></div>
+    <div class="ins"><span class="ins-icon">🚭</span><h3>Smoking Cessation</h3><p>Quitting smoking reduces coronary heart disease risk by 50% within one year.</p></div>
+    <div class="ins"><span class="ins-icon">💊</span><h3>Medication Adherence</h3><p>Statins and antihypertensives are most effective with consistent, long-term use.</p></div>
+  </div>
+</section>
+
+<!-- ── MODEL DETAILS ── -->
+<section id="aboutSection" class="sec">
+  <div class="ph"><div><h1>Model Details</h1><p>Architecture and performance of the Stacked Hybrid classifier.</p></div></div>
+  <div class="abg">
+    <div class="card abc hybrid-card">
+      <div class="ct"><i class="fas fa-layer-group"></i> Hybrid Architecture</div>
+      <dl>
+        <dt>Strategy</dt><dd>5-Fold OOF Stacking</dd>
+        <dt>Base Model 1</dt><dd>XGBoost (200 estimators, lr=0.05)</dd>
+        <dt>Base Model 2</dt><dd>Best DL Architecture (BatchNormNet)</dd>
+        <dt>Meta Learner</dt><dd>Logistic Regression</dd>
+        <dt>Blend (Weighted Avg)</dt><dd>0.6 × XGBoost + 0.4 × DL</dd>
+        <dt>XAI Engine</dt><dd>SHAP TreeExplainer + LIME</dd>
+      </dl>
+    </div>
+    <div class="card abc">
+      <div class="ct"><i class="fas fa-chart-line"></i> Reported Performance</div>
+      <dl>
+        <dt>Accuracy</dt><dd>95.33%</dd>
+        <dt>Recall</dt><dd>97.84%</dd>
+        <dt>Precision</dt><dd>94.21%</dd>
+        <dt>F1-Score</dt><dd>95.99%</dd>
+        <dt>ROC-AUC</dt><dd>98.53%</dd>
+        <dt>Validation</dt><dd>5-fold Stratified CV</dd>
+      </dl>
+    </div>
+    <div class="card abc">
+      <div class="ct"><i class="fas fa-database"></i> Dataset</div>
+      <dl>
+        <dt>Sources</dt><dd>3 merged UCI repositories</dd>
+        <dt>Total Samples</dt><dd>2,141</dd>
+        <dt>Train / Test</dt><dd>1,712 / 429 (80/20 stratified)</dd>
+        <dt>Raw Features</dt><dd>19 clinical features</dd>
+        <dt>Engineered</dt><dd>+4 (chol_age_ratio, bp_hr_ratio, stress_index, cardiac_load)</dd>
+      </dl>
+    </div>
+    <div class="card abc warn-card">
+      <div class="ct"><i class="fas fa-triangle-exclamation"></i> Disclaimer</div>
+      <p>This tool is for <strong>research and educational purposes only</strong>. It does not constitute medical advice and must not replace professional clinical judgement. Always consult a qualified healthcare provider.</p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+const API = 'http://127.0.0.1:8001';
+const state = { patient: null, result: null };
+
+/* ── Nav ── */
+document.querySelectorAll('.nav-item').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  document.querySelectorAll('.sec').forEach(s => s.classList.remove('active'));
+  document.getElementById(`${b.dataset.sec}Section`).classList.add('active');
+}));
+
+/* ── Tabs ── */
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  document.querySelectorAll('.tp').forEach(p => p.classList.remove('active'));
+  document.getElementById(`${b.dataset.tab}Tab`).classList.add('active');
+}));
+
+/* ── Loading overlay ── */
+function loading(on, msg='Analysing patient data…') {
+  document.getElementById('ovMsg').textContent = msg;
+  document.getElementById('ov').classList.toggle('on', on);
+}
+
+/* ── Form submit ── */
+document.getElementById('pForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  loading(true);
+  const patient = {
+    age:             parseFloat(document.getElementById('age').value),
+    sex:             document.getElementById('sex').value,
+    oldpeak:         parseFloat(document.getElementById('oldpeak').value),
+    chest_pain:      document.getElementById('chest_pain').value,
+    restingbp_final: parseFloat(document.getElementById('restingbp_final').value),
+    chol_final:      parseFloat(document.getElementById('chol_final').value),
+    maxhr_final:     parseFloat(document.getElementById('maxhr_final').value),
+    fasting_bs:      document.getElementById('fasting_bs').value,
+    resting_ecg:     document.getElementById('resting_ecg').value,
+    exercise_angina: document.getElementById('exercise_angina').value,
+    st_slope:        document.getElementById('st_slope').value,
+  };
+  state.patient = patient;
+  try {
+    const res = await fetch(`${API}/predict`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(patient)
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const r = await res.json();
+    state.result = r;
+    showResults(r);
+    loadExplain(patient);
+  } catch(err) {
+    alert(`❌ Cannot reach API.\n\nStart the backend:\n  uvicorn api_hybrid:app --port 8001\n\n${err.message}`);
+  } finally { loading(false); }
+});
+
+function showResults(r) {
+  document.getElementById('resPlaceholder').style.display = 'none';
+  document.getElementById('predResults').style.display = 'block';
+
+  const lvl = (r.risk_level||'low').toLowerCase();
+  const badge = document.getElementById('vbadge');
+  badge.className = `vb ${lvl}`;
+  const em = {low:'🟢', medium:'🟡', high:'🔴'};
+  const lb = {low:'Low Risk', medium:'Medium Risk', high:'High Risk'};
+  badge.innerHTML = `<div class="ve">${em[lvl]||'⚪'}</div>
+    <div class="vl">${lb[lvl]||'Unknown'}</div>
+    <div class="vs">${r.prediction}</div>`;
+
+  // Model contribution chips
+  document.getElementById('xgbP').textContent = ((r.xgb_probability||0)*100).toFixed(1)+'%';
+  document.getElementById('dlP').textContent  = ((r.dl_probability||0)*100).toFixed(1)+'%';
+  document.getElementById('hybP').textContent = ((r.probability||0)*100).toFixed(1)+'%';
+
+  // Arc gauge
+  const pct = r.probability * 100;
+  const off = 251.2 - (pct/100)*251.2;
+  const arc = document.getElementById('arcFill');
+  arc.style.strokeDashoffset = off;
+  arc.style.stroke = pct>=70?'#ef4444':pct>=40?'#f59e0b':'#10b981';
+  document.getElementById('arcPct').textContent = pct.toFixed(1)+'%';
+
+  const ci = r.confidence_interval||{};
+  document.getElementById('ciTxt').textContent =
+    `${((ci.lower||0)*100).toFixed(1)}% – ${((ci.upper||0)*100).toFixed(1)}%`;
+
+  renderList('riskList',  r.risk_factors,       'No significant risk factors');
+  renderList('protList',  r.protective_factors,  'No significant protective factors');
+}
+
+function renderList(id, items, empty) {
+  const ul = document.getElementById(id);
+  ul.innerHTML = '';
+  (items&&items.length ? items : [empty]).forEach(t => {
+    const li = document.createElement('li'); li.textContent = t; ul.appendChild(li);
+  });
+}
+
+/* ── Load all XAI plots in background ── */
+async function loadExplain(patient) {
+  const opts = {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(patient)};
+
+  // Waterfall
+  try {
+    const d = await (await fetch(`${API}/explain/waterfall`, opts)).json();
+    setImg('wfImg','wfPh', d.plot);
+  } catch { plotErr('wfPh','Waterfall unavailable'); }
+
+  // Force
+  try {
+    const d = await (await fetch(`${API}/explain/force`, opts)).json();
+    const fr = document.getElementById('forceFrame');
+    fr.srcdoc = d.plot;
+    document.getElementById('forcePh').style.display = 'none';
+  } catch { plotErr('forcePh','Force plot unavailable'); }
+
+  // LIME
+  try {
+    const d = await (await fetch(`${API}/explain/lime`, opts)).json();
+    setImg('limeImg','limePh', d.plot);
+    if (d.feature_weights && d.feature_weights.length) renderLime(d.feature_weights);
+  } catch { plotErr('limePh','LIME unavailable'); }
+}
+
+async function loadSummary() {
+  loading(true,'Computing global SHAP summary…');
+  try {
+    const d = await (await fetch(`${API}/explain/summary`)).json();
+    setImg('sumImg','sumPh', d.plot);
+  } catch { plotErr('sumPh','Summary unavailable'); }
+  finally { loading(false); }
+}
+
+async function loadImportance() {
+  loading(true,'Computing feature importance…');
+  try {
+    const d = await (await fetch(`${API}/explain/importance`)).json();
+    setImg('impImg','impPh', d.plot);
+  } catch { plotErr('impPh','Importance unavailable'); }
+  finally { loading(false); }
+}
+
+function setImg(imgId, phId, b64) {
+  if (!b64) return plotErr(phId,'No image data');
+  const img = document.getElementById(imgId);
+  img.src = `data:image/png;base64,${b64}`;
+  img.classList.add('loaded');
+  document.getElementById(phId).style.display = 'none';
+}
+
+function plotErr(phId, msg) {
+  const ph = document.getElementById(phId);
+  if (!ph) return;
+  ph.style.display = 'flex';
+  ph.innerHTML = `<i class="fas fa-circle-exclamation" style="color:#ef4444"></i>
+    <p style="color:#ef4444;margin-top:.5rem">${msg}</p>`;
+}
+
+function renderLime(weights) {
+  const wrap = document.getElementById('limeTableWrap');
+  const tbl  = document.getElementById('limeTable');
+  wrap.style.display = 'block';
+  let html = `<thead><tr><th>Feature</th><th>Weight</th><th>Direction</th></tr></thead><tbody>`;
+  weights.forEach(({feature,weight}) => {
+    const pos = weight > 0;
+    const clr = pos ? '#be123c' : '#059669';
+    html += `<tr><td>${feature}</td>
+      <td style="color:${clr};font-weight:600">${pos?'+':''}${weight.toFixed(4)}</td>
+      <td style="color:${clr}">${pos?'↑ Increases Risk':'↓ Decreases Risk'}</td></tr>`;
+  });
+  tbl.innerHTML = html + '</tbody>';
+}
+
+/* ── Navigate to explanations ── */
+function goExplain() {
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.querySelector('[data-sec="explain"]').classList.add('active');
+  document.querySelectorAll('.sec').forEach(s => s.classList.remove('active'));
+  document.getElementById('explainSection').classList.add('active');
+}
+
+/* ── Sample patient ── */
+function loadSample() {
+  const v = {age:65,sex:'Male',chest_pain:'Asymptomatic',restingbp_final:160,
+             chol_final:300,fasting_bs:'Yes',resting_ecg:'ST-T Abnormality',
+             maxhr_final:130,exercise_angina:'Yes',oldpeak:2.5,st_slope:'Flat'};
+  Object.entries(v).forEach(([k,val]) => {
+    const el = document.getElementById(k); if (el) el.value = val;
+  });
+  toast('<i class="fas fa-check-circle"></i> High-risk sample patient loaded');
+}
+
+/* ── Export CSV ── */
+function exportCSV() {
+  if (!state.result||!state.patient) return alert('Run a prediction first.');
+  const data = {
+    ...state.patient,
+    hybrid_prediction:   state.result.prediction,
+    hybrid_probability:  ((state.result.probability||0)*100).toFixed(2)+'%',
+    xgb_probability:     ((state.result.xgb_probability||0)*100).toFixed(2)+'%',
+    dl_probability:      ((state.result.dl_probability||0)*100).toFixed(2)+'%',
+    risk_level:          state.result.risk_level,
+    model:               'Stacked Hybrid',
+    generated:           new Date().toISOString(),
+  };
+  const csv  = Object.keys(data).join(',')+'\n'+Object.values(data).join(',');
+  const blob = new Blob([csv],{type:'text/csv'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href=url; a.download=`cardioai_hybrid_${Date.now()}.csv`; a.click();
+  URL.revokeObjectURL(url);
+  toast('<i class="fas fa-file-arrow-down"></i> Report exported');
+}
+
+/* ── Toast ── */
+function toast(html) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.innerHTML = html;
+  document.body.appendChild(t);
+  requestAnimationFrame(() => t.classList.add('show'));
+  setTimeout(() => { t.classList.remove('show'); setTimeout(()=>t.remove(),400); }, 2400);
+}
+</script>
+</body>
+</html>
