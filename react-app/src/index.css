@@ -648,6 +648,45 @@ form,
   gap: 0.75rem;
 }
 
+.feature-card {
+  grid-column: 1 / -1;
+}
+
+.feature-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.9rem;
+  padding: 1.2rem 1.5rem 1.5rem;
+}
+
+.feature-item {
+  border: 1px solid var(--bdr);
+  border-radius: 12px;
+  padding: 0.95rem 1rem;
+  background: #fbfdff;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.feature-item code {
+  font-size: 0.78rem;
+  color: var(--acc2);
+  background: #eef5fb;
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+  width: fit-content;
+}
+
+.feature-item strong {
+  color: var(--ink);
+}
+
+.feature-item p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+}
+
 .artifact-item {
   display: flex;
   justify-content: space-between;
