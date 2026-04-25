@@ -1,3 +1,5 @@
-__pycache_
+__pycache__/
 .venv
 .vscode
+react-app/node_modules
+react-app/dist
